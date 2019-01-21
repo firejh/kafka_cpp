@@ -28,13 +28,14 @@ void Server::run()
     std::string topic = conf.get_topic();
     std::vector<std::string> send_data_vec = conf.get_send_data();
     std::string err_info;
-    std::cout << "######### " << brokers << "\n";
+    std::cout << "brokers " << brokers << "\n";
     
     KafkaP kafka_p;
-    if (!kafka_p.init(brokers.c_str(), topic.c_str(), err_info, NULL)) {
+    if (!kafka_p.init(brokers.c_str(), topic.c_str(), err_info, "1000", &cb)) {
         std::cout << "kafka producer init err, " << err_info << "\n";
         exit(1);
     } 
+    std::cout << "init over\n";
 
     char data[1024] = {0};
 
@@ -49,6 +50,7 @@ void Server::run()
         }
     }
 
+    sleep(3);
 }
 
 void Server::close()
