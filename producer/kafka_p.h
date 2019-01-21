@@ -4,8 +4,7 @@
  * Modified: 2019-01-15 15:46 +0800
  *
  * Description: 
- * 1.发送时会判断kafka状态，避免kafka server关闭使用者不能感知，丢消息或者内存暴涨
- * 2.简单的实现kafka生产以及是否回调
+ *              基于c sdk 简单的 producer cpp 封装，包含异步发送、同步发送、发送回调、超时清理等机制的统一封装
  *
  * Author: jh
  */
