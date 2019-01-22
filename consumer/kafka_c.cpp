@@ -23,8 +23,8 @@ KafkaC::~KafkaC()
 
 bool KafkaC::init(const char* brokers, const char* topic, std::string group, std::string& err_info, bool consume_old)
 {
+    char temp[1024] = {0};
     err_info.clear();
-    err_info.resize(1024);
     if (true == status_) {
         err_info = "KafkaC reinit";
         return false;
@@ -50,25 +50,28 @@ bool KafkaC::init(const char* brokers, const char* topic, std::string group, std
         offset_reset_str = "smallest";
     }
     // 简单说就是本groupid初次消费的时候largest会从最新的开始消费，smallest会从最最早的消息开始消费
-    if (RD_KAFKA_CONF_OK != rd_kafka_topic_conf_set(rd_topic_conf_, "auto.offset.reset", offset_reset_str.c_str(), (char*)err_info.data(), err_info.size())) {
+    if (RD_KAFKA_CONF_OK != rd_kafka_topic_conf_set(rd_topic_conf_, "auto.offset.reset", offset_reset_str.c_str(), temp, sizeof(temp))) {
+        err_info.append(temp);
         return false;
     }
     // commit记录方式，默认的是broker
-    if (RD_KAFKA_CONF_OK != rd_kafka_topic_conf_set(rd_topic_conf_, "offset.store.method", "broker", (char*)err_info.data(), err_info.size())) {
+    if (RD_KAFKA_CONF_OK != rd_kafka_topic_conf_set(rd_topic_conf_, "offset.store.method", "broker", temp, sizeof(temp))) {
+        err_info.append(temp);
         return false;
     }
 
     // kafka conf
     rd_kafka_conf_ = rd_kafka_conf_new();
-    if (RD_KAFKA_CONF_OK != rd_kafka_conf_set(rd_kafka_conf_, "group.id", group_.c_str(), (char*)err_info.data(), err_info.size())) {
+    if (RD_KAFKA_CONF_OK != rd_kafka_conf_set(rd_kafka_conf_, "group.id", group_.c_str(), temp, sizeof(temp))) {
+        err_info.append(temp);
         return false;
     }
     rd_kafka_conf_set_default_topic_conf(rd_kafka_conf_, rd_topic_conf_);
 
     // rd kafka
-    rd_kafka_ = rd_kafka_new(RD_KAFKA_CONSUMER, rd_kafka_conf_, (char*)err_info.data(), err_info.size());
+    rd_kafka_ = rd_kafka_new(RD_KAFKA_CONSUMER, rd_kafka_conf_, temp, sizeof(temp));
     if (NULL == rd_kafka_) {
-        err_info = "rd_kafka_new err";
+        err_info.append(temp);
         return false;
     }
     // return 添加的broker数量
@@ -78,7 +81,7 @@ bool KafkaC::init(const char* brokers, const char* topic, std::string group, std
     }
     if (RD_KAFKA_RESP_ERR_NO_ERROR != rd_kafka_poll_set_consumer(rd_kafka_)) {
         std::stringstream ss;
-        ss <<"rd_kafka_poll_set_consumer err, ret=" << RD_KAFKA_RESP_ERR_NO_ERROR;
+        ss <<"rd_kafka_poll_set_consumer err";
         err_info = ss.str();
         return false;
     }
