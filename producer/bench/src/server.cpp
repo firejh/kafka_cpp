@@ -1,5 +1,7 @@
 #include "server.h"
 
+#include <sstream>
+
 
 Server::Server()
 {
@@ -38,11 +40,16 @@ void Server::run()
     std::cout << "init over\n";
 
     char data[1024] = {0};
+    std::stringstream ss;
 
+    int i = 0;
     while (running_) {
         usleep(conf.get_usleep());
         for (auto& data : send_data_vec) {
-            if (!kafka_p.produce(data.c_str(), data.size(), err_info)) {
+            i++;
+            ss.str("");
+            ss << "test" << i;
+            if (!kafka_p.produce(data.c_str(), data.size(), err_info, ss.str().c_str(), ss.str().size(), 0)) {
                 std::cout << "produce err, " << err_info << "\n";
             } else {
                 //std::cout << "produce success\n";

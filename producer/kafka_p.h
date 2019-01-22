@@ -9,6 +9,7 @@
  * Author: jh
  */
 #ifndef RDKAFKA_PRODUCER_KAFKA_P_H
+#define RDKAFKA_PRODUCER_KAFKA_P_H
 
 #include "unistd.h"
 #include <iostream>
@@ -33,6 +34,7 @@ public:
         } else {
             std::cout << "kafka produce success, " 
             << "len="<< rkmessage->len
+            << ", partition=" << rkmessage->partition
             << std::endl;
         }
         
@@ -56,19 +58,24 @@ public:
     // cb: 回到设置，默认无回调，如果是重要消息，发送失败（server断开等异常）或者成功都会回调
     bool init(const char* brokers, const char* topic, std::string& err_info, const char* clear_time_out = "1000", KafkaPCB* cb = NULL);
 
-    // 
+    // des: 安全关闭
+    void stop();
 
     // des: 发送消
+    // 注意：发送消息长度只支持65535内长度
     // data: 消息内容
     // data_len: 消息长度
     // err_info: 错误信息，正确为empty，内部会clear
+    // key: 默认null，消息不保证有序，走的partition是随机的，自己设置key（比如userID），同key的一定是有序
+    // key_len: 与key同时设置
     // time_out：发送等待时间，0代表非阻塞
-    bool produce(const char* data, uint16_t data_len, std::string& err_info, uint32_t time_out = 0);
+    bool produce(const char* data, uint16_t data_len, std::string& err_info, const char* key = NULL, uint16_t key_len = 0, uint32_t time_out = 0);
 
 private:
     static void produce_cb(rd_kafka_t *rk, const rd_kafka_message_t *rkmessage, void *opaque);
 private:
     //base
+    bool status_;
     std::string brokers_;
     std::string topic_;
     KafkaPCB* cb_;

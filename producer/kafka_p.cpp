@@ -1,9 +1,10 @@
-#include "kafka_p.h"
+#include <sstream>
 
-int a = 10;
+#include "kafka_p.h"
 
 KafkaP::KafkaP()
 {
+    status_ = false;
     cb_ = NULL;
     rdhandler_ = NULL;
     rdconf_ = NULL;
@@ -13,6 +14,18 @@ KafkaP::KafkaP()
 
 KafkaP::~KafkaP()
 {}
+
+void KafkaP::stop()
+{
+    status_ = false;
+
+    sleep(2);
+    rd_kafka_poll(rdhandler_, 0);
+
+    rd_kafka_topic_destroy(rdtopic_);
+    rd_kafka_destroy(rdhandler_);
+
+}
 
 bool KafkaP::init(const char* brokers, const char* topic, std::string& err_info, const char* clear_time_out, KafkaPCB* cb)
 {
@@ -74,14 +87,19 @@ bool KafkaP::init(const char* brokers, const char* topic, std::string& err_info,
     //topic
     rdtopic_ = rd_kafka_topic_new(rdhandler_, topic, rdtopic_conf_);
     
+    status_ = true;
 
     return true;
 }
 
-bool KafkaP::produce(const char* data, uint16_t data_len, std::string& err_info, uint32_t time_out)
+bool KafkaP::produce(const char* data, uint16_t data_len, std::string& err_info, const char* key, uint16_t key_len, uint32_t time_out)
 {
+    if (false == status_) {
+        rd_kafka_poll(rdhandler_, time_out);
+        err_info = "KafkaP status is stopped, can not produce";
+        return false;
+    }
     err_info.clear();
-    err_info.resize(1024);
 
     if (NULL == data || data_len == 0) {
         err_info = "data is NULL";
@@ -94,17 +112,17 @@ bool KafkaP::produce(const char* data, uint16_t data_len, std::string& err_info,
                                RD_KAFKA_MSG_F_COPY,     //拷贝
                                (void*)data,             //消息内容
                                (size_t)data_len,        //消息长度
-                               NULL,                    //key
-                               0,                       //key_len
+                               key,                     //key
+                               key_len,                 //key_len
                                this                     //自己的回调数据指针
                                );
 
-    if (-1 == ret) {
-        //rd_kafka_err2str,这里会警告该用法过时，待完善 
-        rd_kafka_resp_err_t err_t = rd_kafka_errno2err(errno);
-        err_info = std::string("produce err, err_info=") + std::string(rd_kafka_err2str(err_t)) 
-        + ", brokers=" + brokers_ 
-        + ", topic=" + topic_;
+    if (0 != ret) {
+        std::stringstream ss;
+        ss << std::string("produce err, errno=") << errno
+        << ", brokers=" << brokers_ 
+        << ", topic=" << topic_;
+        err_info = ss.str();
         rd_kafka_poll(rdhandler_, time_out);
         return false;
     }
@@ -120,6 +138,7 @@ void KafkaP:: produce_cb(rd_kafka_t *rk, const rd_kafka_message_t *rkmessage, vo
     // opaque 总是null，怀疑是已经废弃的参数
     // rkmessage->_private 才是发送消息自己的数据指针
     if (rkmessage->_private == NULL) {
+        std::cout << "rkmessage->_private = null, maybe producer have stopped\n";
         //pass，should not touch
     } else {
         KafkaP* self = (KafkaP*)rkmessage->_private;

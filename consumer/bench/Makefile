@@ -1,4 +1,4 @@
-OBJS		= kafka_p.o src/config.o src/server.o src/main.o
+OBJS		= kafka_c.o src/config.o src/server.o src/main.o
 BIN			= example_exe
 CXX			= g++
 CXXFLAGS	= -O3 -g -ggdb3 -std=c++11
@@ -10,7 +10,7 @@ INC			= -I./src \
 			  -I./third \
 			  -I../ \
 			  -I../../opensource/include \
-			  -I/usr/local \
+			  #-I/usr/local \
 
 LIB			= -lpthread \
 			  ./third/lib/libiniparser.a \
