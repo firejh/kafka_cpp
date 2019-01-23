@@ -46,7 +46,7 @@ bool KafkaC::init(const char* brokers, const char* topic, std::string group, std
     // topic conf
     rd_topic_conf_ = rd_kafka_topic_conf_new();
     std::string offset_reset_str = "largest";
-    if (true == consume_old) {
+    if (false == consume_old) {
         offset_reset_str = "smallest";
     }
     // 简单说就是本groupid初次消费的时候largest会从最新的开始消费，smallest会从最最早的消息开始消费

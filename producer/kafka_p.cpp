@@ -19,8 +19,7 @@ void KafkaP::stop()
 {
     status_ = false;
 
-    sleep(2);
-    rd_kafka_poll(rdhandler_, 0);
+    rd_kafka_poll(rdhandler_, 1000);
 
     rd_kafka_topic_destroy(rdtopic_);
     rd_kafka_destroy(rdhandler_);
@@ -30,7 +29,7 @@ void KafkaP::stop()
 bool KafkaP::init(const char* brokers, const char* topic, std::string& err_info, const char* clear_time_out, KafkaPCB* cb)
 {
     err_info.clear();
-    err_info.resize(1024);
+    char temp[1024] = {0};
 
     //base 
     brokers_ = brokers;
@@ -50,8 +49,9 @@ bool KafkaP::init(const char* brokers, const char* topic, std::string& err_info,
     if (rd_kafka_conf_set(rdconf_, 
                           "bootstrap.servers", 
                           brokers, 
-                          (char*)err_info.data(),  
-                          err_info.size()) != RD_KAFKA_CONF_OK){  
+                          temp,  
+                          sizeof(temp)) != RD_KAFKA_CONF_OK){  
+        err_info.append(temp);
         return false;
     }  
     if (NULL != cb) {
@@ -61,8 +61,9 @@ bool KafkaP::init(const char* brokers, const char* topic, std::string& err_info,
     }
 
     //handler create and set
-    rdhandler_ = rd_kafka_new(RD_KAFKA_PRODUCER, rdconf_, (char*)err_info.data(), err_info.size());
+    rdhandler_ = rd_kafka_new(RD_KAFKA_PRODUCER, rdconf_, temp, sizeof(temp));
     if (NULL == rdhandler_) {
+        err_info.append(temp);
         return false;
     }
     if (rd_kafka_brokers_add(rdhandler_, brokers) == 0) {
@@ -79,12 +80,13 @@ bool KafkaP::init(const char* brokers, const char* topic, std::string& err_info,
     if (rd_kafka_topic_conf_set(rdtopic_conf_, 
                                 "message.timeout.ms",
                                 clear_time_out, 
-                                (char*)err_info.data(), 
-                                err_info.size()) != RD_KAFKA_CONF_OK) {
-        return false;    
+                                temp, 
+                                sizeof(temp)) != RD_KAFKA_CONF_OK) {
+        err_info.append(temp);
+        return false; 
     }
 
-    //topic
+    //topic，如果不存在会自动创建topic
     rdtopic_ = rd_kafka_topic_new(rdhandler_, topic, rdtopic_conf_);
     
     status_ = true;
